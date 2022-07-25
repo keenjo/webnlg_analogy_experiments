@@ -1,4 +1,4 @@
-# This is a file containing all of the libraries installed in the environment I use to run the all of # the scripts in this repository
+# This is a file containing all of the libraries installed in the environment I use to run the scripts in this repository
 
 name: osu_webnlg
 channels:
