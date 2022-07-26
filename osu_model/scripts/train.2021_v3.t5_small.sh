@@ -11,7 +11,7 @@ CACHEDIR=osu_model_cache/$model
 mkdir -p $SAVEDIR
 mkdir -p $CACHEDIR
 
-python finetune-transformers/train.py \
+python finetune-transformers/train_single.py \
   --pretrained-model-path "t5-small" \
   --train-source-data-path $(readlink -f "data-prep/$data/train.mr") \
   --train-target-data-path $(readlink -f "data-prep/$data/train.lx") \
