@@ -23,7 +23,7 @@ python finetune-transformers/train.py \
   --batch-size 8 --update-frequency 1 \
   --learning-rate 2e-5 \
   --valid-batch-size 8 \
-  --valid-bleu --valid-beam-size 5 --valid-max-length 200
+  --valid-beam-size 5 --valid-max-length 200
 
   # Took this out of the arguments because this file was not created in preprocessing and a 'None' value is acceptable here according to train.py
   #--indivisible-tokens-path $(readlink -f "data-prep/$data/indivisible_tokens.txt") \
