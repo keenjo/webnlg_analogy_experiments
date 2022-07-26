@@ -4,7 +4,7 @@ cd $(dirname $0)/..
 
 export CUDA_VISIBLE_DEVICES=0
 data=2021_v3_en
-model=t5_large
+model=t5_small
 SAVEDIR=osu_model_checkpoints/$data.$model
 CACHEDIR=osu_model_cache/$model
 
@@ -12,7 +12,7 @@ mkdir -p $SAVEDIR
 mkdir -p $CACHEDIR
 
 python finetune-transformers/train.py \
-  --pretrained-model-path "t5-large" \
+  --pretrained-model-path "t5-small" \
   --train-source-data-path $(readlink -f "data-prep/$data/train.mr") \
   --train-target-data-path $(readlink -f "data-prep/$data/train.lx") \
   --valid-source-data-path $(readlink -f "data-prep/$data/valid.mr") \
