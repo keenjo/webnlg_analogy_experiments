@@ -1,139 +1,17 @@
-# This is a file containing all of the libraries installed in the environment I use to run the scripts in this repository
-
-name: osu_webnlg
-channels:
-  - anaconda
-  - defaults
-  - conda-forge
-dependencies:
-  - absl-py=1.1.0=pyhd8ed1ab_0
-  - aiohttp=3.8.1=py38h33210d7_1
-  - aiosignal=1.2.0=pyhd8ed1ab_0
-  - async-timeout=4.0.2=pyhd8ed1ab_0
-  - attrs=21.4.0=pyhd8ed1ab_0
-  - blas=2.115=openblas
-  - blas-devel=3.9.0=15_osxarm64_openblas
-  - blinker=1.4=py_1
-  - brotli=1.0.9=h1c322ee_7
-  - brotli-bin=1.0.9=h1c322ee_7
-  - brotlipy=0.7.0=py38h33210d7_1004
-  - bzip2=1.0.8=h620ffc9_4
-  - c-ares=1.18.1=h3422bc3_0
-  - ca-certificates=2022.4.26=hca03da5_0
-  - cachetools=5.0.0=pyhd8ed1ab_0
-  - certifi=2022.6.15=py38hca03da5_0
-  - cffi=1.15.0=py38h22df2f2_1
-  - charset-normalizer=2.1.0=pyhd8ed1ab_0
-  - click=8.0.4=py38hca03da5_0
-  - colorama=0.4.5=py38hca03da5_0
-  - cryptography=37.0.4=py38h530bd25_0
-  - cycler=0.11.0=pyhd8ed1ab_0
-  - filelock=3.7.1=pyhd8ed1ab_0
-  - fonttools=4.25.0=pyhd3eb1b0_0
-  - freetype=2.11.0=h1192e45_0
-  - frozenlist=1.3.0=py38h33210d7_1
-  - future=0.18.2=py38hca03da5_1
-  - giflib=5.2.1=h27ca646_2
-  - google-auth=2.9.1=pyh6c4a22f_0
-  - google-auth-oauthlib=0.4.6=pyhd8ed1ab_0
-  - grpcio=1.42.0=py38h95c9599_0
-  - huggingface_hub=0.8.1=pyhd8ed1ab_0
-  - idna=3.3=pyhd8ed1ab_0
-  - importlib-metadata=4.11.4=py38h10201cd_0
-  - importlib_metadata=4.11.4=hd8ed1ab_0
-  - jbig=2.1=h3422bc3_2003
-  - joblib=1.1.0=pyhd3eb1b0_0
-  - jpeg=9e=he4db4b2_2
-  - kiwisolver=1.4.2=py38hc377ac9_0
-  - lcms2=2.12=had6a04f_0
-  - lerc=3.0=hbdafb3b_0
-  - libblas=3.9.0=15_osxarm64_openblas
-  - libbrotlicommon=1.0.9=h1c322ee_7
-  - libbrotlidec=1.0.9=h1c322ee_7
-  - libbrotlienc=1.0.9=h1c322ee_7
-  - libcblas=3.9.0=15_osxarm64_openblas
-  - libcxx=12.0.0=hf6beb65_1
-  - libdeflate=1.10=h3422bc3_0
-  - libffi=3.4.2=hc377ac9_4
-  - libgfortran=5.0.0.dev0=11_0_1_hf114ba7_23
-  - libgfortran5=11.0.1.dev0=hf114ba7_23
-  - liblapack=3.9.0=15_osxarm64_openblas
-  - liblapacke=3.9.0=15_osxarm64_openblas
-  - libopenblas=0.3.20=openmp_h2209c59_0
-  - libpng=1.6.37=h2c9beb0_3
-  - libprotobuf=3.19.1=h98b2900_0
-  - libtiff=4.3.0=h77dc3b6_3
-  - libwebp=1.2.2=h68602c7_0
-  - libwebp-base=1.2.2=h3422bc3_1
-  - libzlib=1.2.12=ha287fd2_2
-  - llvm-openmp=14.0.4=hd125106_0
-  - lz4-c=1.9.3=hbdafb3b_1
-  - markdown=3.4.1=pyhd8ed1ab_0
-  - matplotlib=3.5.1=py38hca03da5_1
-  - matplotlib-base=3.5.1=py38hc377ac9_1
-  - multidict=6.0.2=py38h33210d7_1
-  - munkres=1.1.4=pyh9f0ad1d_0
-  - ncurses=6.3=h1a28f6b_3
-  - ninja=1.10.2=hca03da5_5
-  - ninja-base=1.10.2=h525c30c_5
-  - nltk=3.7=pyhd3eb1b0_0
-  - numpy=1.22.3=py38h25ab29e_0
-  - numpy-base=1.22.3=py38h974a1f5_0
-  - oauthlib=3.2.0=pyhd8ed1ab_0
-  - openblas=0.3.20=openmp_h745f6c2_0
-  - openssl=1.1.1q=h1a28f6b_0
-  - packaging=21.3=pyhd8ed1ab_0
-  - pillow=9.2.0=py38h4d1bdd5_1
-  - pip=22.1.2=py38hca03da5_0
-  - portalocker=2.3.0=py38hca03da5_0
-  - progressbar2=4.0.0=pyhd8ed1ab_0
-  - protobuf=3.19.1=py38hc377ac9_0
-  - pyasn1=0.4.8=py_0
-  - pyasn1-modules=0.2.7=py_0
-  - pycparser=2.21=pyhd3eb1b0_0
-  - pyjwt=2.4.0=pyhd8ed1ab_0
-  - pyopenssl=22.0.0=pyhd8ed1ab_0
-  - pyparsing=3.0.9=pyhd8ed1ab_0
-  - pysocks=1.7.1=py38h10201cd_5
-  - python=3.8.13=h7e095e3_0_cpython
-  - python-dateutil=2.8.2=pyhd8ed1ab_0
-  - python-utils=3.3.3=pyhd8ed1ab_0
-  - python_abi=3.8=2_cp38
-  - pytorch=1.10.2=cpu_py38h23cb94c_0
-  - pyu2f=0.1.5=pyhd8ed1ab_0
-  - pyyaml=6.0=py38h33210d7_4
-  - readline=8.1.2=h1a28f6b_1
-  - regex=2022.3.15=py38h1a28f6b_0
-  - requests=2.28.1=pyhd8ed1ab_0
-  - requests-oauthlib=1.3.1=pyhd8ed1ab_0
-  - rsa=4.8=pyhd8ed1ab_0
-  - sacrebleu=2.0.0=pyhd3eb1b0_1
-  - sacremoses=0.0.53=pyhd8ed1ab_0
-  - scipy=1.7.3=py38hd0c9ec0_0
-  - sentencepiece=0.1.95=py38h525c30c_0
-  - setuptools=61.2.0=py38hca03da5_0
-  - six=1.16.0=pyh6c4a22f_0
-  - sqlite=3.38.5=h1058600_0
-  - tabulate=0.8.10=py38hca03da5_0
-  - tensorboard=2.9.1=pyhd8ed1ab_0
-  - tensorboard-data-server=0.6.0=py38h7f91714_2
-  - tensorboard-plugin-wit=1.8.1=pyhd8ed1ab_0
-  - tk=8.6.12=hb8d0fd4_0
-  - tokenizers=0.11.4=py38h5c5695e_1
-  - torchvision=0.9.1=py38h4ddca67_0_cpu
-  - tornado=6.1=py38h1a28f6b_0
-  - tqdm=4.64.0=py38hca03da5_0
-  - transformers=4.18.0=py38hca03da5_0
-  - typing=3.10.0.0=py38hca03da5_0
-  - typing-extensions=4.1.1=hd3eb1b0_0
-  - typing_extensions=4.1.1=pyh06a4308_0
-  - urllib3=1.26.10=pyhd8ed1ab_0
-  - werkzeug=2.1.2=pyhd8ed1ab_1
-  - wheel=0.37.1=pyhd3eb1b0_0
-  - xmltodict=0.13.0=pyhd8ed1ab_0
-  - xz=5.2.5=h1a28f6b_1
-  - yaml=0.2.5=h3422bc3_2
-  - yarl=1.7.2=py38h33210d7_2
-  - zipp=3.8.0=pyhd8ed1ab_0
-  - zlib=1.2.12=h5a0b063_2
-  - zstd=1.5.2=h861e0a7_0
+matplotlib=3.2.2
+nltk=3.5
+numpy=1.18.5
+pandas=1.1.1
+pytorch=1.6.0=py3.8_cuda10.1.243_cudnn7.6.3_0
+pytorch-lightning=0.8.5=pypi_0
+regex=2020.6.8=pypi_0
+rouge-score=0.0.4=pypi_0
+sacrebleu=1.4.12=pypi_0
+sacremoses=0.0.43=pypi_0
+scipy=1.5.1=pypi_0
+sentencepiece=0.1.91=pypi_0
+sqlite=3.32.3=h62c20be_0
+tensorboard=2.3.0=pypi_0
+torchvision=0.7.0=py38_cu101
+tqdm=4.47.0=pypi_0
+xmltodict=0.12.0=pypi_0
