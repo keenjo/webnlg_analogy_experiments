@@ -2,8 +2,8 @@
 
 cd $(dirname $0)/..
 
-orig=data_2021_v3/en
-prep=data-prep/2021_v3_en
+orig=data/data_2021_v3-raw/en
+prep=data/data-prep/2021_v3_en
 
 src=mr
 tgt=lx
