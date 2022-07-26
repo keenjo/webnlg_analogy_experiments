@@ -52,33 +52,12 @@ git clone https://github.com/znculee/finetune-transformers.git
 ### Data Preprocessing
 
 ```bash
-bash scripts/prepare.2020_v2.en.sh
+bash scripts/prepare.2021_v3.en.sh
 ```
 
 ### [Fine-tune huggingface/transformers](https://github.com/znculee/finetune-transformers)
 
 ```bash
-bash scripts/train.2020_v2.t5_large.sh
+bash scripts/train.2021_v3.t5_small.sh
 bash scripts/generate.2020_v2.t5_large.sh
-```
-
-## WebNLG 2017
-
-### Data
-
-[ThiagoCF05/webnlg/data/v1.5/en](https://github.com/ThiagoCF05/webnlg/tree/master/data/v1.5/en)
-
-### Data Preprocessing
-
-
-```bash
-cp -r path/to/ThiagoCF05/webnlg/data/v1.5/en data/2017_v1_5
-bash scripts/prepare.2017_v1_5.sh
-```
-
-### [Fine-tune huggingface/transformers](https://github.com/znculee/finetune-transformers)
-
-```bash
-bash scripts/train.2017_v1_5.t5_small.sh
-bash scripts/generate.2017_v1_5.t5_small.sh
 ```
