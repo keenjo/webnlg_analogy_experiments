@@ -59,5 +59,5 @@ bash scripts/prepare.2021_v3.en.sh
 
 ```bash
 bash scripts/train.2021_v3.t5_small.sh
-bash scripts/generate.2020_v2.t5_large.sh
+bash scripts/generate.2021_v3.t5_small.sh
 ```
