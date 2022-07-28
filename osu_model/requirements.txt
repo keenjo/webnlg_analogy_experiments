@@ -1,3 +1,4 @@
+# Use python 3.8 along with these packages
 accelerate==0.11.0
 pytorch-lightning==1.6.5
 sacrebleu==2.2.0
