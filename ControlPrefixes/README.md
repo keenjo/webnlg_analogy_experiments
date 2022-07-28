@@ -1,6 +1,8 @@
 This directory contains modified code from the following repository in order to recreate and expand upon experiments from `Control Prefixes for Parameter-efficient Text Generation (Clive et al, 2021)`:
 - https://github.com/jordiclive/ControlPrefixes.git
 
+Note: Be sure to use python 3.7 when running these experiments
+
 # Control Prefixes for Parameter-efficient Text Generation! 🚅 
 This is the implementation of [Control Prefixes for Parameter-efficient Text Generation](https://arxiv.org/abs/2110.08329)
 
