@@ -13,10 +13,10 @@ mkdir -p $CACHEDIR
 
 python finetune-transformers/train_single.py \ # Change this to 'accelerate launch finetune-transformers/train.py' if running distributed training (multiple GPUs)
   --pretrained-model-path "t5-small" \
-  --train-source-data-path $(readlink -f "data-prep/$data/train.mr") \
-  --train-target-data-path $(readlink -f "data-prep/$data/train.lx") \
-  --valid-source-data-path $(readlink -f "data-prep/$data/valid.mr") \
-  --valid-target-data-path $(readlink -f "data-prep/$data/valid.lx") \
+  --train-source-data-path $(readlink -f "data/data-prep/$data/train.mr") \
+  --train-target-data-path $(readlink -f "data/data-prep/$data/train.lx") \
+  --valid-source-data-path $(readlink -f "data/data-prep/$data/valid.mr") \
+  --valid-target-data-path $(readlink -f "data/data-prep/$data/valid.lx") \
   --save-dir $(readlink -f $SAVEDIR) \
   --cache-dir $(readlink -f $CACHEDIR) \
   --max-epoch 500 --patience 10 \
