@@ -8,13 +8,23 @@ import xmltodict
 def xml2json(args):
     json_data = {'entries': []}
     for path, subdirs, files in os.walk(args.xml):
-        for name in files:
-            xml_file_path = os.path.join(path, name)
-            if not xml_file_path.endswith('.xml'):
-                continue
+        if 'test' in path:
+            '''
+            For the test split we only need to take data from this one file because the directory structure
+            is not the same as the train & dev sets
+            '''
+            xml_file_path = os.path.join(path, 'rdf-to-text-generation-test-data-with-refs-en.xml')
             with open(xml_file_path, 'r') as xml_file:
                 xml_data = xmltodict.parse(xml_file.read())
             json_data['entries'].extend(xml_data['benchmark']['entries']['entry'])
+        else:
+            for name in files:
+                xml_file_path = os.path.join(path, name)
+                if not xml_file_path.endswith('.xml'):
+                    continue
+                with open(xml_file_path, 'r') as xml_file:
+                    xml_data = xmltodict.parse(xml_file.read())
+                json_data['entries'].extend(xml_data['benchmark']['entries']['entry'])
     entries = []
     valid_idx = 1
     for idx, entry in enumerate(json_data['entries']):
