@@ -2,8 +2,8 @@
 
 cd $(dirname $0)/..
 
-orig=data/data_2021_v3-raw/en
-prep=data/data-prep/2021_v3_en
+orig=data_2021_v3/en
+prep=data-prep/2021_v3_en
 
 src=mr
 tgt=lx
@@ -13,9 +13,9 @@ mkdir -p $prep
 for split in train dev test; do
   echo "preparing $split.json"
   if [ "$split" == "test" ]; then
-    python scripts/xml2json.py --nolex $orig/test $orig/test.json
+    python scripts/xml2json.py $orig/test $orig/test.json #uncommented nolex
   else
-    python scripts/xml2json.py $orig/$split $orig/$split.json
+  python scripts/xml2json.py $orig/$split $orig/$split.json
   fi
 echo "** Done preparing $split.json file **"
 done
@@ -39,8 +39,10 @@ for split in train dev test; do
       awk '{$1=$1;print}' | \
       awk 'BEGIN{ORS=" "} y{print s} {s=$0;y=1} END{ORS="";print s}')
     if [ "$split" == "test" ]; then
-      lxs="placeholder"
-      num_lxs=1
+      lxs=$(echo "$item" | jq '.lex[]."#text"' | sed 's/^"//;s/"$//' | sed 's/\\"//g')
+      num_lxs=$(echo "$lxs" | wc -l)
+      #lxs="placeholder"
+      #num_lxs=1
     else
       lxs=$(echo "$item" | jq '.lex[]."#text"' | sed 's/^"//;s/"$//' | sed 's/\\"//g')
       num_lxs=$(echo "$lxs" | wc -l)
