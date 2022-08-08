@@ -9,16 +9,16 @@ Description:
     METEOR, chrF++, TER and BERT-Score.
     
     ARGS:
-        usage: eval.py [-h] -R REFERENCE -H HYPOTHESIS [-lng LANGUAGE] [-nr NUM_REFS]
+        usage: eval.py [-h] -R REFERENCE -H prediction [-lang LANGUAGE] [-nr NUM_REFS]
                [-m METRICS] [-nc NCORDER] [-nw NWORDER] [-b BETA]
 
         optional arguments:
           -h, --help            show this help message and exit
           -R REFERENCE, --reference REFERENCE
                                 reference translation
-          -H HYPOTHESIS, --hypothesis HYPOTHESIS
-                                hypothesis translation
-          -lng LANGUAGE, --language LANGUAGE
+          -H PREDICTION, --prediction PREDICTION
+                                prediction translation
+          -lang LANGUAGE, --language LANGUAGE
                                 evaluated language
           -nr NUM_REFS, --num_refs NUM_REFS
                                 number of references
@@ -32,46 +32,64 @@ Description:
 
     EXAMPLE:
         ENGLISH: 
-            python3 eval.py -R data/en/references/reference -H data/en/hypothesis -nr 4 -m bleu,meteor,chrf++,ter,bert,bleurt
+            python3 eval.py -R data/en/references/reference -H data/en/prediction -nr 4 -m bleu,meteor,chrf++,ter,bert,bleurt
         RUSSIAN:
-            python3 eval.py -R data/ru/reference -H data/ru/hypothesis -lng ru -nr 1 -m bleu,meteor,chrf++,ter,bert
+            python3 eval.py -R data/ru/reference -H data/ru/prediction -lang ru -nr 1 -m bleu,meteor,chrf++,ter,bert
 """
-
 import sys
 import argparse
 import codecs
 import copy
 import os
 import pyter
-import logging
 import nltk
 import subprocess
 import re
 
-from bert_score import score
-from metrics.chrF import computeChrF
 #from metrics.bleurt.bleurt import score as bleurt_score
-sys.argv = sys.argv[:1]
+from metrics.chrF import computeChrF
 from nltk.translate.bleu_score import corpus_bleu, SmoothingFunction
 from razdel import tokenize
 from tabulate import tabulate
+from statistics import mean
 import evaluate
+
 
 BLEU_PATH = 'metrics/multi-bleu-detok.perl'
 METEOR_PATH = 'metrics/meteor-1.5/meteor-1.5.jar'
 
-bleu = evaluate.load('bleu')
-meteor = evaluate.load('meteor')
 bertscore = evaluate.load('bertscore')
 
 
-def parse(refs_path, hyps_path, num_refs, lng='en'):
-    logging.info('STARTING TO PARSE INPUTS...')
-    print('STARTING TO PARSE INPUTS...')
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--references", help="path to references file", type=str, required=True)
+    parser.add_argument("--predictions", help="path to predictions file", type=str, required=True)
+    parser.add_argument("--target-file", help="base name of target file in references path [(test_both | test_seen | test_unseen) + (.target | .target_eval)]", type=str, required=True)
+    parser.add_argument("--metrics", help="evaluation metrics to be computed", type=str, default='bleu,meteor,bert')
+    parser.add_argument("--language", help="evaluated language", type=str, default='en')
+    parser.add_argument("--num-refs", help="maximum number of references in dataset split (same as number of reference files for that split) [default=4]", type=int, default=4)
+    parser.add_argument("--ncorder", help="chrF metric: character n-gram order [default=6]", type=int, default=6)
+    parser.add_argument("--nworder", help="chrF metric: word n-gram order [default=2]", type=int, default=2)
+    parser.add_argument("--beta", help="chrF metric: beta parameter [default=2]", type=float, default=2.0)
+    args = parser.parse_args()
+    print(f'Evaluation references: {args.target_file}')
+    print(f'Evaluation predictions: {args.predictions}')
+    return args
+
+
+def format_data(args):
+    '''
+    EDIT THIS FUNCTION SO THAT IT FORMATS DATA DIFFERENTLY ONLY FOR BERT SCORE SINCE I USE A DIFFERENT METHOD,
+    OR SEE IF OLD METHOD WORKS FINE
+    '''
+
+    print('PARSING INPUTS...')
+
     # references
     references = []
-    for i in range(num_refs):
-        fname = refs_path + str(i) if num_refs > 1 else refs_path
+    for i in range(args.num_refs):
+        fname = args.references + args.target_file + str(i + 1) if args.num_refs > 1 else args.references
         with codecs.open(fname, 'r', 'utf-8') as f:
             texts = f.read().split('\n')
             for j, text in enumerate(texts):
@@ -83,119 +101,163 @@ def parse(refs_path, hyps_path, num_refs, lng='en'):
     # references tokenized
     references_tok = copy.copy(references)
     for i, refs in enumerate(references_tok):
-        if lng == 'ru':
+        if args.language == 'ru':
             references_tok[i] = [' '.join([_.text for _ in tokenize(ref)]) for ref in refs]
         else:
             references_tok[i] = [' '.join(nltk.word_tokenize(ref)) for ref in refs]
 
-    # hypothesis
-    with codecs.open(hyps_path, 'r', 'utf-8') as f:
-        hypothesis = f.read().split('\n')
+    # prediction
+    with codecs.open(args.predictions, 'r', 'utf-8') as f:
+        predictions = f.read().split('\n')
 
-    # hypothesis tokenized
-    hypothesis_tok = copy.copy(hypothesis)
-    if lng == 'ru':
-        hypothesis_tok = [' '.join([_.text for _ in tokenize(hyp)]) for hyp in hypothesis_tok]
+    # These two commands below will remove the last item in each list which is empty because there is a blank line at the end of each file
+    predictions = predictions[:-1]
+    references = references[:-1]
+
+    # predictions tokenized
+    predictions_tok = copy.copy(predictions)
+    if args.language == 'ru':
+        predictions_tok = [' '.join([_.text for _ in tokenize(hyp)]) for hyp in predictions_tok]
     else:
-        hypothesis_tok = [' '.join(nltk.word_tokenize(hyp)) for hyp in hypothesis_tok]
+        predictions_tok = [' '.join(nltk.word_tokenize(hyp)) for hyp in predictions_tok]
+
+    print('FINISHING PARSING INPUTS...')
+
+    return references, references_tok, predictions, predictions_tok
 
 
-    logging.info('FINISHING TO PARSE INPUTS...')
-    print('FINISHING TO PARSE INPUTS...')
-    return references, references_tok, hypothesis, hypothesis_tok
+def run(args):
+    metrics = args.metrics.lower().split(',')
+    references, references_tok, predictions, predictions_tok = format_data(args)
 
-def bleu_score(references, hypothesis, num_refs):
-    logging.info('STARTING TO COMPUTE BLEU...')
-    print('STARTING TO COMPUTE BLEU...')
+    result = {}
+    print('STARTING EVALUATION...')
+    if 'bleu' in metrics:
+        bleu = bleu_score(args.references, args.predictions, args.target_file)
+        result['BLEU'] = bleu
 
-    linear_references = []
-    for refs in references:
-        temp_ref = []
-        for i in range(num_refs):
-            temp_ref.append(refs[i])
-        temp_ref = [item for item in temp_ref if item != '']
-        linear_references.append(temp_ref)
-    # I do this step below because there is a space at the end of the references file that creates an empty list at the end of our references list
-    linear_references = [x for x in linear_references if x != []]
+        b = bleu_nltk(references_tok, predictions_tok)
+        result['BLEU_NLTK'] = b
+    if 'meteor' in metrics:
+        meteor = meteor_score(references, predictions, args.num_refs)
+        result['METEOR'] = meteor
+    if 'chrf++' in metrics:
+        chrf, _, _, _ = chrF_score(references, predictions, args.num_refs, args.nworder, args.ncorder, args.beta)
+        result['chrf++'] = chrf
+    if 'ter' in metrics:
+        ter = ter_score(references_tok, predictions_tok, args.num_refs)
+        result['TER'] = ter
+    if 'bert' in metrics:
+        P, R, F1 = bert_score_(references, predictions, lang=args.language)
+        result['BERT PRECISION'] = P
+        result['BERT RECALL'] = R
+        result['BERT F1'] = F1
+    if 'bleurt' in metrics and args.language == 'en':
+        s = bleurt(references, predictions, args.num_refs)
+        result['BLEURT'] = s
+    print('FINISHING EVALUATION')
 
-    bleu_results = meteor.compute(predictions=hypothesis, references=linear_references)
+    return result
 
-    logging.info('FINISHING BLEU COMPUTATION...')
-    print('FINISHING BLEU COMPUTATION...')
+
+def bleu_score(references, predictions, target_file):
+    print('COMPUTING BLEU...')
+    ref_files = []
+    for i in range(5):
+
+        ref_files.append(references + target_file + str(i + 1))
+
+    command = 'perl {0} {1} < {2}'.format(BLEU_PATH, ' '.join(ref_files), predictions)
+    result = subprocess.check_output(command, shell=True)
+    try:
+        bleu_results = float(re.findall('BLEU = (.+?),', str(result))[0])
+    except:
+        print('ERROR COMPUTING BLEU.')
+        bleu_results = -1
+
+    print('FINISHING COMPUTING BLEU...')
     return bleu_results
 
 
-def meteor_score(references, hypothesis, num_refs):
-    logging.info('STARTING TO COMPUTE METEOR...')
-    print('STARTING TO COMPUTE METEOR...')
+def meteor_score(references, prediction, num_refs, lng='en'):
+    print('COMPUTING METEOR...')
+    preds_tmp = 'meteor_hypothesis.txt'
+    refs_tmp = 'meteor_references.txt'
+    print(f'References file: {refs_tmp}')
+    print(f'References length: {len(references)}')
+    print(f'Predictions file: {preds_tmp}')
+    print(f'Predictions length: {len(prediction)}')
+    with codecs.open(preds_tmp, 'w', 'utf-8') as f:
+        f.write('\n'.join(prediction))
 
     linear_references = []
     for refs in references:
-        temp_ref = []
         for i in range(num_refs):
-            temp_ref.append(refs[i])
-        temp_ref = [item for item in temp_ref if item != '']
-        linear_references.append(temp_ref)
+            linear_references.append(refs[i])
 
-    linear_references = [x for x in linear_references if x != []]
+    with codecs.open(refs_tmp, 'w', 'utf-8') as f:
+        f.write('\n'.join(linear_references))
 
-    meteor_results = meteor.compute(predictions=hypothesis, references=linear_references)
-    meteor_results = round(meteor_results['meteor'], 2)
+    try:
+        command = f'java -Xmx2G -jar {METEOR_PATH} '
+        command += f'{preds_tmp} {refs_tmp} -l {lng} -norm -r {num_refs}'
+        result = subprocess.check_output(command, shell=True)
+        meteor = result.split(b'\n')[-2].split()[-1]
+    except:
+        print('ERROR COMPUTING METEOR.')
+        meteor = -1
 
-    logging.info('FINISHING METEOR COMPUTATION...')
-    print('FINISHING METEOR COMPUTATION...')
-    return float(meteor_results)
-
-
-def bert_score_(references, hypothesis):
-    logging.info('STARTING TO COMPUTE BERT SCORE...')
-    print('STARTING TO COMPUTE BERT SCORE...')
-
-    linear_references = []
-    for refs in references:
-        temp_ref = []
-        for i in range(num_refs):
-            temp_ref.append(refs[i])
-        temp_ref = [item for item in temp_ref if item != '']
-        linear_references.append(temp_ref)
-
-    linear_references = [x for x in linear_references if x != []]
-
-    bertscore_results = bertscore.compute(predictions=hypothesis, references=linear_references, lang='en')
-
-    logging.info('FINISHING BERT SCORE COMPUTATION...')
-    print('FINISHING BERT SCORE COMPUTATION...')
-    return bertscore_results['precision'], bertscore_results['recall'], bertscore_results['f1']
+    try:
+        os.remove(preds_tmp)
+        os.remove(refs_tmp)
+    except:
+        pass
+    print('FINISHING COMPUTING METEOR...')
+    return float(meteor)
 
 
-def bleu_nltk(references, hypothesis):
+def bert_score_(references, predictions, lang):
+    print('COMPUTING BERT SCORE...')
+    for i, refs in enumerate(references):
+        references[i] = [ref for ref in refs if ref.strip() != '']
+
+    bertscore_results = bertscore.compute(predictions=predictions, references=references, lang=lang)
+
+    mean_precision = float(mean(bertscore_results['precision']))
+    mean_recall = float(mean(bertscore_results['recall']))
+    mean_f1 = float(mean(bertscore_results['f1']))
+
+    print('FINISHING COMPUTING BERT SCORE...')
+    return mean_precision, mean_recall, mean_f1
+
+
+def bleu_nltk(references, prediction):
     # check for empty lists
-    references_, hypothesis_ = [], []
+    references_, prediction_ = [], []
     for i, refs in enumerate(references):
         refs_ = [ref for ref in refs if ref.strip() != '']
         if len(refs_) > 0:
             references_.append([ref.split() for ref in refs_])
-            hypothesis_.append(hypothesis[i].split())
+            prediction_.append(prediction[i].split())
 
     chencherry = SmoothingFunction()
-    return corpus_bleu(references_, hypothesis_, smoothing_function=chencherry.method3)
+    return corpus_bleu(references_, prediction_, smoothing_function=chencherry.method3)
 
 
-def chrF_score(references, hypothesis, num_refs, nworder, ncorder, beta):
-    logging.info('STARTING TO COMPUTE CHRF++...')
-    print('STARTING TO COMPUTE CHRF++...')
-    hyps_tmp, refs_tmp = 'hypothesis_chrF', 'reference_chrF'
+def chrF_score(references, prediction, num_refs, nworder, ncorder, beta):
+    print('COMPUTING CHRF++...')
+    hyps_tmp, refs_tmp = 'prediction_chrF', 'reference_chrF'
 
     # check for empty lists
-    references_, hypothesis_ = [], []
+    references_, prediction_ = [], []
     for i, refs in enumerate(references):
         refs_ = [ref for ref in refs if ref.strip() != '']
         if len(refs_) > 0:
             references_.append(refs_)
-            hypothesis_.append(hypothesis[i])
+            prediction_.append(prediction[i])
 
     with codecs.open(hyps_tmp, 'w', 'utf-8') as f:
-        f.write('\n'.join(hypothesis_))
+        f.write('\n'.join(prediction_))
 
     linear_references = []
     for refs in references_:
@@ -210,24 +272,21 @@ def chrF_score(references, hypothesis, num_refs, nworder, ncorder, beta):
     try:
         totalF, averageTotalF, totalPrec, totalRec = computeChrF(rtxt, htxt, nworder, ncorder, beta, None)
     except:
-        logging.error('ERROR ON COMPUTING CHRF++.')
-        print('ERROR ON COMPUTING CHRF++.')
+        print('ERROR COMPUTING CHRF++.')
         totalF, averageTotalF, totalPrec, totalRec = -1, -1, -1, -1
     try:
         os.remove(hyps_tmp)
         os.remove(refs_tmp)
     except:
         pass
-    logging.info('FINISHING TO COMPUTE CHRF++...')
-    print('FINISHING TO COMPUTE CHRF++...')
+    print('FINISHING COMPUTING CHRF++...')
     return totalF, averageTotalF, totalPrec, totalRec
 
 
-def ter_score(references, hypothesis, num_refs):
-    logging.info('STARTING TO COMPUTE TER...')
-    print('STARTING TO COMPUTE TER...')
+def ter_score(references, prediction, num_refs):
+    print('COMPUTING TER...')
     ter_scores = []
-    for hyp, refs in zip(hypothesis, references):
+    for hyp, refs in zip(prediction, references):
         candidates = []
         for ref in refs[:num_refs]:
             if len(ref) == 0:
@@ -241,14 +300,13 @@ def ter_score(references, hypothesis, num_refs):
 
         ter_scores.append(min(candidates))
 
-    logging.info('FINISHING TO COMPUTE TER...')
-    print('FINISHING TO COMPUTE TER...')
+    print('FINISHING COMPUTING TER...')
     return sum(ter_scores) / len(ter_scores)
 
 
-def bleurt(references, hypothesis, num_refs, checkpoint = "metrics/bleurt/bleurt-base-128"):
+def bleurt(references, prediction, num_refs, checkpoint = "metrics/bleurt/bleurt-base-128"):
     refs, cands = [], []
-    for i, hyp in enumerate(hypothesis):
+    for i, hyp in enumerate(prediction):
         for ref in references[i][:num_refs]:
             cands.append(hyp)
             refs.append(ref)
@@ -259,97 +317,9 @@ def bleurt(references, hypothesis, num_refs, checkpoint = "metrics/bleurt/bleurt
     return round(sum(scores) / len(scores), 2)
 
 
-def run(refs_path, hyps_path, num_refs, lng='en', metrics='bleu,meteor,chrf++,ter,bert,bleurt',ncorder=6, nworder=2, beta=2):
-    metrics = metrics.lower().split(',')
-    references, references_tok, hypothesis, hypothesis_tok = parse(refs_path, hyps_path, num_refs, lng)
-    
-    result = {}
-    
-    logging.info('STARTING EVALUATION...')
-    if 'bleu' in metrics:
-        bleu = bleu_score(refs_path, hyps_path, num_refs)
-        result['bleu'] = bleu
-
-        b = bleu_nltk(references_tok, hypothesis_tok)
-        result['bleu_nltk'] = b
-    if 'meteor' in metrics:
-        meteor = meteor_score(references_tok, hypothesis_tok, num_refs, lng=lng)
-        result['meteor'] = meteor
-    if 'chrf++' in metrics:
-        chrf, _, _, _ = chrF_score(references, hypothesis, num_refs, nworder, ncorder, beta)
-        result['chrf++'] = chrf
-    if 'ter' in metrics:
-        ter = ter_score(references_tok, hypothesis_tok, num_refs)
-        result['ter'] = ter
-    if 'bert' in metrics:
-        P, R, F1 = bert_score_(references, hypothesis, lng=lng)
-        result['bert_precision'] = P
-        result['bert_recall'] = R
-        result['bert_f1'] = F1
-    if 'bleurt' in metrics and lng == 'en':
-        s = bleurt(references, hypothesis, num_refs)
-        result['bleurt'] = s
-    logging.info('FINISHING EVALUATION...')
-    
-    return result
-
-
 if __name__ == '__main__':
-    FORMAT = '%(levelname)s: %(asctime)-15s - %(message)s'
-    logging.basicConfig(filename='eval.log', level=logging.INFO, format=FORMAT)
-    '''
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--reference", help="reference translation", required=True)
-    parser.add_argument("--hypothesis", help="hypothesis translation", required=True)
-    parser.add_argument("--language", help="evaluated language", default='en')
-    parser.add_argument("--num_refs", help="number of references", type=int, default=4)
-    parser.add_argument("--metrics", help="evaluation metrics to be computed", default='bleu,meteor,ter,chrf++,bert,bleurt')
-    parser.add_argument("--ncorder", help="chrF metric: character n-gram order (default=6)", type=int, default=6)
-    parser.add_argument("--nworder", help="chrF metric: word n-gram order (default=2)", type=int, default=2)
-    parser.add_argument("--beta", help="chrF metric: beta parameter (default=2)", type=float, default=2.0)
-    '''
-    #args = parser.parse_args()
-    logging.info('READING INPUTS...')
-    refs_path = '/Users/josephkeenan/nlp/internship_2022/ControlPrefixes_all/graph2text_preproc/webnlg/data/webnlg_prep_EVAL/references/reference' #args.reference
-    hyps_path = '/Users/josephkeenan/nlp/internship_2022/ControlPrefixes_all/src/datatotext/model_outputs/outputs_test_both.txt' #args.hypothesis
-    lng = 'en' #args.language
-    num_refs = 5 #args.num_refs
-    metrics = 'bleu,meteor,bert' #args.metrics#.lower().split(',')
 
-    nworder = 2 #args.nworder
-    ncorder = 6 #args.ncorder
-    beta = 2 #args.beta
-    logging.info('FINISHING TO READ INPUTS...')
+    final_results = run(parse_args())
 
-    result = run(refs_path=refs_path, hyps_path=hyps_path, num_refs=num_refs, lng=lng, metrics=metrics, ncorder=ncorder, nworder=nworder, beta=beta)
-    
-    metrics = metrics.lower().split(',')
-    headers, values = [], []
-    if 'bleu' in metrics:
-        headers.append('BLEU')
-        values.append(result['bleu'])
-
-        headers.append('BLEU NLTK')
-        values.append(round(result['bleu_nltk'], 2))
-    if 'meteor' in metrics:
-        headers.append('METEOR')
-        values.append(round(result['meteor'], 2))
-    if 'chrf++' in metrics:
-        headers.append('chrF++')
-        values.append(round(result['chrf++'], 2))
-    if 'ter' in metrics:
-        headers.append('TER')
-        values.append(round(result['ter'], 2))
-    if 'bert' in metrics:
-        headers.append('BERT-SCORE P')
-        values.append(round(result['bert_precision'], 2))
-        headers.append('BERT-SCORE R')
-        values.append(round(result['bert_recall'], 2))
-        headers.append('BERT-SCORE F1')
-        values.append(round(result['bert_f1'], 2))
-    if 'bleurt' in metrics and lng == 'en':
-        headers.append('BLEURT')
-        values.append(round(result['bleurt'], 2))
-
-    logging.info('PRINTING RESULTS...')
-    print(tabulate([values], headers=headers))
+    for result in final_results:
+        print(f'{result}: {final_results[result]}')
