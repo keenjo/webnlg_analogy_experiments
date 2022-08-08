@@ -211,7 +211,7 @@ for d in tqdm(datasets, desc='Datasets'):
     dataset_points.append(datapoints)
 
 
-path = os.path.dirname(os.path.realpath(__file__)) + '/webnlg_prep/'
+path = os.path.dirname(os.path.realpath(__file__)) + '/webnlg_prep_TEST/' # Change file name back when experimenting is over
 if not os.path.exists(path):
     os.makedirs(path)
 
@@ -228,10 +228,15 @@ for idx, datapoints in enumerate(dataset_points):
     surfaces = []
     surfaces_2 = []
     surfaces_3 = []
+    surfaces_4 = []
+    surfaces_5 = []
 
     surfaces_eval = []
     surfaces_2_eval = []
     surfaces_3_eval = []
+    surfaces_4_eval = []
+    surfaces_5_eval = []
+
     for datapoint in datapoints:
         '''
         Here the source triples and the lexicalizations are being organized into their respective files
@@ -262,14 +267,26 @@ for idx, datapoints in enumerate(dataset_points):
             else:
                 surfaces_3.append('')
                 surfaces_3_eval.append('')
+            if 'test' in part: # only continue on to these steps for test set
+                if len(sur) > 3:
+                    surfaces_4.append(sur[3][0])
+                    surfaces_4_eval.append(sur[3][1])
+                else:
+                    surfaces_4.append('')
+                    surfaces_4_eval.append('')
+                if len(sur) > 4 and part != 'test_seen': # exclude test_seen because none of the triples in the seen split have more than 4 lexicalizations so this list would be empty
+                    surfaces_5.append(sur[4][0])
+                    surfaces_5_eval.append(sur[4][1])
+                else:
+                    surfaces_5.append('')
+                    surfaces_5_eval.append('')
         else:
             surfaces.append(sur[0])
             surfaces_eval.append(sur[1])
-
     with open(path + '/' + part + '.source', 'w', encoding='utf8') as f:
         f.write('\n'.join(nodes))
         f.write('\n')
-    with open(path + '/' + part + '.target', 'w', encoding='utf8') as f:
+    with open(path + '/' + part + '.target1', 'w', encoding='utf8') as f:
         f.write('\n'.join(surfaces))
         f.write('\n')
     if part != 'train':
@@ -279,8 +296,16 @@ for idx, datapoints in enumerate(dataset_points):
         with open(path + '/' + part + '.target3', 'w', encoding='utf8') as f:
             f.write('\n'.join(surfaces_3))
             f.write('\n')
+    if 'test' in part: # only do for test set
+        with open(path + '/' + part + '.target4', 'w', encoding='utf8') as f:
+            f.write('\n'.join(surfaces_4))
+            f.write('\n')
+        if part != 'test_seen': # exclude test_seen because none of the triples in this split have more than 4 lexicalizations so this file would be empty
+            with open(path + '/' + part + '.target5', 'w', encoding='utf8') as f:
+                f.write('\n'.join(surfaces_5))
+                f.write('\n')
 
-    with open(path + '/' + part + '.target_eval', 'w', encoding='utf8') as f:
+    with open(path + '/' + part + '.target1_eval', 'w', encoding='utf8') as f:
         f.write('\n'.join(surfaces_eval))
         f.write('\n')
     if part != 'train':
@@ -290,19 +315,19 @@ for idx, datapoints in enumerate(dataset_points):
         with open(path + '/' + part + '.target3_eval', 'w', encoding='utf8') as f:
             f.write('\n'.join(surfaces_3_eval))
             f.write('\n')
+    if 'test' in part: # only do for test set
+        with open(path + '/' + part + '.target4_eval', 'w', encoding='utf8') as f:
+            f.write('\n'.join(surfaces_4_eval))
+            f.write('\n')
+        if part != 'test_seen': # exclude test_seen because none of the triples in this split have more than 4 lexicalizations so this file would be empty
+            with open(path + '/' + part + '.target5_eval', 'w', encoding='utf8') as f:
+                f.write('\n'.join(surfaces_5_eval))
+                f.write('\n')
 
-        path_c = os.path.dirname(os.path.realpath(__file__))
-        os.system("python " + path_c + '/' + "convert_files_crf.py " + path + '/' + part)
-        os.system("python " + path_c + '/' + "convert_files_meteor.py " + path + '/' + part)
+# See if these crf and meteor files are ever used for our purposes
+        #path_c = os.path.dirname(os.path.realpath(__file__))
+        #os.system("python " + path_c + '/' + "convert_files_crf.py " + path + '/' + part)
+        #os.system("python " + path_c + '/' + "convert_files_meteor.py " + path + '/' + part)
 
 print('Preprocessing Finished')
-
-
-
-
-
-
-
-
-
-
+print(f'Data located in {path}')
