@@ -16,7 +16,7 @@ from transformers import (
     PretrainedConfig,
     PreTrainedTokenizer,
 )
-from transformers.modeling_t5 import T5ForConditionalGeneration
+from transformers.models.t5.modeling_t5 import T5ForConditionalGeneration
 from transformers.optimization import (
     Adafactor,
     get_cosine_schedule_with_warmup,
@@ -88,7 +88,7 @@ class PrefixTransformer(pl.LightningModule):
                 cache_dir=cache_dir,
             )
             if self.hparams.new_tokens:
-                new_tokens = ["<H>", "<R>", "<T>"]
+                new_tokens = ["<H>", "<R>", "<T>", "<L>", "<<G>>"]
                 if self.hparams.control_token_DART:
                     new_tokens.extend(
                         [
