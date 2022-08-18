@@ -9,6 +9,8 @@ import unidecode
 import os
 from tqdm import tqdm
 import csv
+import numpy as np
+from collections import defaultdict
 
 folder = sys.argv[1]
 
@@ -88,6 +90,7 @@ def get_data_dev_test(file_, train_cat, dataset):
     datapoints = []
 
     cats = set()
+    #cats_list = []
 
     xmldoc = minidom.parse(file_)
     entries = xmldoc.getElementsByTagName('entry')
@@ -97,14 +100,17 @@ def get_data_dev_test(file_, train_cat, dataset):
         cat = e.getAttribute('category')
         if dataset == 'dev' or dataset == 'test_both':
             cats.add(cat)
+            #cats_list.append(cat)
             added_cat = True
             cont += 1
         elif dataset == 'test_seen' and cat in train_cat:
             cats.add(cat)
+            #cats_list.append(cat)
             added_cat = True
             cont += 1
         elif dataset == 'test_unseen' and cat not in train_cat:
             cats.add(cat)
+            #cats_list.append(cat)
             added_cat = True
             cont += 1
 
@@ -123,7 +129,7 @@ def get_data_dev_test(file_, train_cat, dataset):
                 # new_doc = tokenizer.tokenize(new_doc)
                 # new_doc = ' '.join(new_doc)
                 surfaces.append((l, new_doc.lower()))
-            datapoints.append([nodes, surfaces, sub_list, edge_list, [0,0]])
+            datapoints.append([nodes, surfaces, sub_list, edge_list, [0,0], cat])
             # Append a tuple containing ONE triple and the LIST of lexicalizations to the datapoints list
 
     return datapoints, cats, cont
@@ -132,6 +138,7 @@ def get_data_dev_test(file_, train_cat, dataset):
 def get_data(file_):
     datapoints = []
     cats = set()
+    #cats_list = []
 
     xmldoc = minidom.parse(file_)
     entries = xmldoc.getElementsByTagName('entry')
@@ -139,6 +146,7 @@ def get_data(file_):
     for e in entries:
         cat = e.getAttribute('category')
         cats.add(cat)
+        #cats_list.append(cat)
 
         cont += 1
 
@@ -154,7 +162,7 @@ def get_data(file_):
             new_doc = ' '.join(new_doc.split())
             # new_doc = tokenizer.tokenize(new_doc)
             # new_doc = ' '.join(new_doc)
-            datapoints.append([nodes, (l, new_doc.lower()), sub_list, edge_list, [0,0]])
+            datapoints.append([nodes, (l, new_doc.lower()), sub_list, edge_list, [0,0], cat])
             # Append a tuple containing ONE triple and ONE lexicalization to the datapoints list
             #edge_compare.append(edges)
 
@@ -164,7 +172,7 @@ def get_data(file_):
 def find_analogies(datapoints, split):
     ana_count = 0
     for x in tqdm(range(len(datapoints)), desc='Finding Analogies'):
-        # Loop to find partial analogies is a full analogy is not found after searching through the whole dataset
+        #inner_ana_count = 0
         for y in range(len(datapoints)):
             x_subject_set = set(datapoints[x][2])
             y_subject_set = set(datapoints[y][2])
@@ -180,18 +188,25 @@ def find_analogies(datapoints, split):
                 pred_sim_score = len(inter_pred) / unique_predicates # Similarity score via percentage of overlap over unique predicates
                 if pred_sim_score > 0.6: # If the predicate similarity score is above threshold
                     datapoints, ana_count = add_analogies(datapoints, x, y, ana_count, split=split)
+                    #inner_ana_count += 1
                     #ana_count += 1
                     datapoints[x][4][0] = sub_sim_score
                     datapoints[x][4][1] = pred_sim_score
+                    # Idea if we wanted to look for more than 1 analogy
+                    # add a count inside the x loop
+                    # Also may be best to add these additional analogies to the same list as the original,
+                    # so you'd have to make some slight changes to add_analogies function as well as the surface list organization,
+                    # but nothing major, probably just adding another 'for loop'
                     break
+
 
     if split == 'train' or split == 'dev':
         print(f'{ana_count}/{len(datapoints)} total analogies')
     else:
         datapoints_len = []
         for datapoint in datapoints:
-            if len(datapoint) > 5:
-                datapoints_len.append(len(datapoint[5]))
+            if len(datapoint) > 6:
+                datapoints_len.append(len(datapoint[6]))
             else:
                 datapoints_len.append(1) # Just add a 1 to the list since there will only be 1 input if there are no analogies found (since we only take one lexicalization
         print(f'{ana_count}/{sum(datapoints_len)} total analogies')
@@ -283,6 +298,7 @@ for d in tqdm(datasets, desc='Datasets'): # Datasets list: ['dev', 'test_both', 
     cont_all = 0
     datapoints = []
     all_cats = set()
+    #all_cats_list = []
     if 'test' in d:
         d_set = 'test'
         files = [folder + '/' + d_set + '/rdf-to-text-generation-test-data-with-refs-en.xml']
@@ -371,8 +387,9 @@ for idx, datapoints in enumerate(dataset_points):
 
     overlap_scores = [datapoint[4] for datapoint in datapoints]
 
-
-    for datapoint in datapoints:
+    total_data_count = 0
+    cats_list = []
+    for index, datapoint in enumerate(datapoints):
         '''
         #Here the source triples and the lexicalizations are being organized into their respective files
         #- Source triples are placed into the .source file
@@ -388,23 +405,60 @@ for idx, datapoints in enumerate(dataset_points):
          - 0: list of list of triples
          - 1: tuple of lexicalizations
             - if train split -> tuple of 2 lexicalizations (normal, lowercase)
-            - if not test or dev split -> list of these couplet tuples
+            - if test or dev split -> list of these couplet tuples
         - 2: list of subjects for each triple in datapoint[0]
         - 3: list of predicates for each triple in datapoint[0]
         - 4: list containing the sub_sim_score and pred_sim_score for each analogy [Scores are set to 0 if no analogy is found]
-        - 5: new input with analogy triple/graph & lexicalizations along with the original triple (g1 <L> s1 <<G>> g2) [ONLY IF AN ANALOGY IS FOUND]
+        - 5: category of each input triple
+        - 6: new input with analogy triple/graph & lexicalizations along with the original triple (g1 <L> s1 <<G>> g2) [ONLY IF AN ANALOGY IS FOUND]
         
         '''
 
-        if len(datapoint) > 5:
-            node = datapoint[5]
-        else:
-            node = datapoint[0]
         sur = datapoint[1]
+        if len(datapoint) > 6: # We only want to include data for which analogies were found
+            node = datapoint[6]
+            if type(node[0]) == list: # Checking if there are multiple inputs for a certain graph
+                for single_node in node:
+                    total_data_count += 1
+                    nodes.append(' '.join(single_node))
+                    cats_list.append(datapoint[5])
+                    if part != 'train':
+                        surfaces.append(sur[0][0])
+                        surfaces_eval.append(sur[0][1])
+                        if len(sur) > 1:
+                            surfaces_2.append(sur[1][0])
+                            surfaces_2_eval.append(sur[1][1])
+                        else:
+                            surfaces_2.append('')
+                            surfaces_2_eval.append('')
+                        if len(sur) > 2:
+                            surfaces_3.append(sur[2][0])
+                            surfaces_3_eval.append(sur[2][1])
+                        else:
+                            surfaces_3.append('')
+                            surfaces_3_eval.append('')
+                        if 'test' in part:  # only continue on to these steps for test set
+                            if len(sur) > 3:
+                                surfaces_4.append(sur[3][0])
+                                surfaces_4_eval.append(sur[3][1])
+                            else:
+                                surfaces_4.append('')
+                                surfaces_4_eval.append('')
+                            if len(
+                                    sur) > 4 and part != 'test_seen':  # exclude test_seen because none of the triples in the seen split have more than 4 lexicalizations so this list would be empty
+                                surfaces_5.append(sur[4][0])
+                                surfaces_5_eval.append(sur[4][1])
+                            else:
+                                surfaces_5.append('')
+                                surfaces_5_eval.append('')
+                    else:
+                        surfaces.append(sur[0])
+                        surfaces_eval.append(sur[1])
 
-        if type(node[0]) == list: # Checking if there are multiple inputs for a certain graph
-            for single_node in node:
-                nodes.append(' '.join(single_node))
+            else:
+                total_data_count += 1
+                nodes.append(' '.join(node))
+                cats_list.append(datapoint[5])
                 if part != 'train':
                     surfaces.append(sur[0][0])
                     surfaces_eval.append(sur[0][1])
@@ -437,44 +491,30 @@ for idx, datapoints in enumerate(dataset_points):
                 else:
                     surfaces.append(sur[0])
                     surfaces_eval.append(sur[1])
-        else:
-            nodes.append(' '.join(node))
-            if part != 'train':
-                surfaces.append(sur[0][0])
-                surfaces_eval.append(sur[0][1])
-                if len(sur) > 1:
-                    surfaces_2.append(sur[1][0])
-                    surfaces_2_eval.append(sur[1][1])
-                else:
-                    surfaces_2.append('')
-                    surfaces_2_eval.append('')
-                if len(sur) > 2:
-                    surfaces_3.append(sur[2][0])
-                    surfaces_3_eval.append(sur[2][1])
-                else:
-                    surfaces_3.append('')
-                    surfaces_3_eval.append('')
-                if 'test' in part:  # only continue on to these steps for test set
-                    if len(sur) > 3:
-                        surfaces_4.append(sur[3][0])
-                        surfaces_4_eval.append(sur[3][1])
-                    else:
-                        surfaces_4.append('')
-                        surfaces_4_eval.append('')
-                    if len(
-                            sur) > 4 and part != 'test_seen':  # exclude test_seen because none of the triples in the seen split have more than 4 lexicalizations so this list would be empty
-                        surfaces_5.append(sur[4][0])
-                        surfaces_5_eval.append(sur[4][1])
-                    else:
-                        surfaces_5.append('')
-                        surfaces_5_eval.append('')
-            else:
-                surfaces.append(sur[0])
-                surfaces_eval.append(sur[1])
+
+    print(f'{total_data_count} datapoints')
+    print(f'Cats check: {len(cats_list)}') # Verifying that the length of the categories list is the same as the number of datapoints
+
+    # Creating numpy arrays for the sources and categories
+    if part != 'test_unseen':
+        cats_dict = defaultdict(lambda: len(cats_dict))
+        cats_map = [cats_dict[cat_] for cat_ in cats_list]
+        cats_map = np.array(cats_map).astype(int)
+    else:
+        cats_map = np.array([16 for x in range(len(cats_list))]).astype(int)
+    source_array = np.ones(len(cats_list)).astype(int)
 
     with open(path + '/' + part + '.source', 'w', encoding='utf8') as f:
         f.write('\n'.join(nodes))
         f.write('\n')
+
+
+    np_source_path = path + '/' + part + '.source.npy'
+    np.save(np_source_path, source_array)
+
+    np_cats_path = path + '/' + part + '.source_cat.npy'
+    np.save(np_cats_path, cats_map)
+
     if 'test' in part:
         target1_name = '.target1'
     else:
@@ -530,6 +570,7 @@ for idx, datapoints in enumerate(dataset_points):
         write.writerow(labels)
         for score in overlap_scores:
             write.writerow(score)
+
 
 
 print('Preprocessing Finished')
