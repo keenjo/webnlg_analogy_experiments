@@ -122,7 +122,7 @@ def get_data_dev_test(file_, train_cat, dataset):
                 # new_doc = tokenizer.tokenize(new_doc)
                 # new_doc = ' '.join(new_doc)
                 surfaces.append((l, new_doc.lower()))
-            datapoints.append([nodes, surfaces, sub_list, edge_list, [0, 0]])
+            datapoints.append([nodes, surfaces, sub_list, edge_list, [00, 00]])
             # Append a tuple containing ONE triple and the LIST of lexicalizations to the datapoints list
 
     return datapoints, cats, cont
@@ -153,7 +153,7 @@ def get_data(file_):
             new_doc = ' '.join(new_doc.split())
             # new_doc = tokenizer.tokenize(new_doc)
             # new_doc = ' '.join(new_doc)
-            datapoints.append([nodes, (l, new_doc.lower()), sub_list, edge_list, [0, 0]])
+            datapoints.append([nodes, (l, new_doc.lower()), sub_list, edge_list, [00, 00]])
             # Append a tuple containing ONE triple and ONE lexicalization to the datapoints list
             # edge_compare.append(edges)
 
@@ -201,8 +201,7 @@ def find_analogies(datapoints, split):
             if len(datapoint) > 5:
                 datapoints_len.append(len(datapoint[5]))
             else:
-                datapoints_len.append(
-                    1)  # Just add a 1 to the list since there will only be 1 input if there are no analogies found (since we only take one lexicalization
+                datapoints_len.append(1)  # Just add a 1 to the list since there will only be 1 input if there are no analogies found (since we only take one lexicalization
         print(f'{ana_count}/{sum(datapoints_len)} total analogies')
     return datapoints
 
@@ -329,8 +328,7 @@ for d in tqdm(datasets, desc='Datasets'):  # Datasets list: ['dev', 'test_both',
           but will NOT be the number of UNIQUE triples (since each triple may have multiple lexicalizations)
         '''
     else:
-        print(
-            f'Number of {d} texts/lexicalizations: {sum([len(datapoints[num][1]) for num, val in enumerate(datapoints)])}')
+        print(f'Number of {d} texts/lexicalizations: {sum([len(datapoints[num][1]) for num, val in enumerate(datapoints)])}')
         datapoints = find_analogies(datapoints, split=d)
         '''
         Datapoints list organization for all other dataset splits: List of tuples in which each tuple contains two items:
@@ -347,6 +345,19 @@ for d in tqdm(datasets, desc='Datasets'):  # Datasets list: ['dev', 'test_both',
     print('cat', all_cats)
 
     dataset_points.append(datapoints)
+
+
+# This section is to update test_both so it is the combination of test_seen and test_unseen (and thus contains the identical analogies)
+dataset_points[2] = dataset_points[3] + dataset_points[4] # Replacing the test_both data with the test_seen + test_unseen data + their corresponding analogies
+ana_count = sum([len(datapoint[5]) for datapoint in dataset_points[2] if len(datapoint) > 5])
+datapoints_len = []
+for datapoint in dataset_points[2]:
+    if len(datapoint) > 5:
+        datapoints_len.append(len(datapoint[5]))
+    else:
+        datapoints_len.append(1)  # Just add a 1 to the list since there will only be 1 input if there are no analogies found (since we only take one lexicalization
+print(f'{ana_count}/{sum(datapoints_len)} total REVISED TEST BOTH analogies')
+
 
 path = os.path.dirname(
     os.path.realpath(__file__)) + '/webnlg_prep_OSU/'  # Change file name back when experimenting is over
@@ -380,9 +391,10 @@ for idx, datapoints in enumerate(dataset_points):
     #surface_lists = list(zip(surfaces, surfaces_2, surfaces_3, surfaces_4, surfaces_5))
     #surface_eval_lists = list(zip(surfaces_eval, surfaces_2_eval, surfaces_3_eval, surfaces_4_eval, surfaces_5_eval))
 
-    overlap_scores = [datapoint[4] for datapoint in datapoints]
+    #overlap_scores = [datapoint[4] for datapoint in datapoints]
 
     total_data_count = 0
+    overlap_scores= []
     for datapoint in datapoints:
         '''
         #Here the source triples and the lexicalizations are being organized into their respective files
@@ -414,6 +426,7 @@ for idx, datapoints in enumerate(dataset_points):
                 for single_node in node:
                     total_data_count += 1
                     nodes.append(' '.join(single_node))
+                    overlap_scores.append(datapoint[4])
                     if part != 'train':
                         surfaces.append(sur[0][0])
                         surfaces_eval.append(sur[0][1])
@@ -451,6 +464,7 @@ for idx, datapoints in enumerate(dataset_points):
             else:
                 total_data_count += 1
                 nodes.append(' '.join(node))
+                overlap_scores.append(datapoint[4])
                 if part != 'train':
                     surfaces.append(sur[0][0])
                     surfaces_eval.append(sur[0][1])
@@ -485,15 +499,29 @@ for idx, datapoints in enumerate(dataset_points):
                 else:
                     surfaces.append(sur[0])
                     surfaces_eval.append(sur[1])
-    print(f'{total_data_count} datapoints')
-    with open(path + '/' + part + '.mr', 'w', encoding='utf8') as f:
+    print(f'{part} datapoints: {total_data_count}')
+
+    if part != 'test_seen' or part != 'test_unseen':
+        mr_extension = '.mr'
+        lx_extension = '.lx'
+    else:
+        mr_extension = '.uniq.mr'
+        lx_extension = '.mref.lx'
+
+    if part == 'test_both':
+        part_name = 'test'
+    elif part == 'test_seen':
+        part_name = 'test.seen'
+    elif part == 'test_unseen':
+        part_name = 'test.unseen'
+    else:
+        part_name = part
+
+    with open(path + '/' + part_name + mr_extension, 'w', encoding='utf8') as f:
         f.write('\n'.join(nodes))
         f.write('\n')
-    if 'test' in part:
-        target1_name = '.lx'
-    else:
-        target1_name = '.lx'
-    with open(path + '/' + part + target1_name, 'w', encoding='utf8') as f:
+
+    with open(path + '/' + part_name + lx_extension, 'w', encoding='utf8') as f:
         f.write('\n'.join(surfaces))
         f.write('\n')
     '''
@@ -517,7 +545,7 @@ for idx, datapoints in enumerate(dataset_points):
         target1_eval_name = '.lx_eval'
     else:
         target1_eval_name = '.lx_eval'
-    with open(path + '/' + part + target1_eval_name, 'w', encoding='utf8') as f:
+    with open(path + '/' + part_name + target1_eval_name, 'w', encoding='utf8') as f:
         f.write('\n'.join(surfaces_eval))
         f.write('\n')
     '''
@@ -543,7 +571,7 @@ for idx, datapoints in enumerate(dataset_points):
     '''
 
     labels = ['Subject overlap', 'Predicate overlap']
-    with open(path + '/' + part + '.overlap_scores.csv', 'w', encoding='utf8') as f:
+    with open(path + '/' + part_name + '.overlap_scores.csv', 'w', encoding='utf8') as f:
         write = csv.writer(f)
         write.writerow(labels)
         for score in overlap_scores:
