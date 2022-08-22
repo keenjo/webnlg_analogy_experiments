@@ -16,6 +16,16 @@ folder = sys.argv[1]
 
 datasets = ['train', 'dev', 'test_both', 'test_seen', 'test_unseen']
 
+OG = True
+if OG is True:
+    print(f'OG is {OG}. Data will be preprocessed to work with training script.')
+else:
+    print(f'OG is {OG}. Data will be preprocessed to work with evaluation script.')
+'''
+- If OG is set to False the data will be preprocessed to work with the evaluation scripts
+- If OG is set to True the data will be preprocessed to work with the Control Prefixes training script
+    - The only difference is the number of folders everything is organized into in the end and whether to include eval_crf and eval_meteor files
+'''
 
 def camel_case_split(identifier):
     matches = re.finditer('.+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)', identifier)
@@ -52,10 +62,9 @@ def get_relation(n):
 
 
 def process_triples(mtriples):
-
     nodes = []
-    edge_list = [] # List of edges for each triple
-    sub_list = [] # List of subjects for each triple
+    edge_list = []  # List of edges for each triple
+    sub_list = []  # List of subjects for each triple
 
     for idx, m in enumerate(mtriples):
         ms = m.firstChild.nodeValue
@@ -90,7 +99,7 @@ def get_data_dev_test(file_, train_cat, dataset):
     datapoints = []
 
     cats = set()
-    #cats_list = []
+    # cats_list = []
 
     xmldoc = minidom.parse(file_)
     entries = xmldoc.getElementsByTagName('entry')
@@ -100,17 +109,17 @@ def get_data_dev_test(file_, train_cat, dataset):
         cat = e.getAttribute('category')
         if dataset == 'dev' or dataset == 'test_both':
             cats.add(cat)
-            #cats_list.append(cat)
+            # cats_list.append(cat)
             added_cat = True
             cont += 1
         elif dataset == 'test_seen' and cat in train_cat:
             cats.add(cat)
-            #cats_list.append(cat)
+            # cats_list.append(cat)
             added_cat = True
             cont += 1
         elif dataset == 'test_unseen' and cat not in train_cat:
             cats.add(cat)
-            #cats_list.append(cat)
+            # cats_list.append(cat)
             added_cat = True
             cont += 1
 
@@ -129,7 +138,7 @@ def get_data_dev_test(file_, train_cat, dataset):
                 # new_doc = tokenizer.tokenize(new_doc)
                 # new_doc = ' '.join(new_doc)
                 surfaces.append((l, new_doc.lower()))
-            datapoints.append([nodes, surfaces, sub_list, edge_list, [0,0], cat])
+            datapoints.append([nodes, surfaces, sub_list, edge_list, [00, 00], cat])
             # Append a tuple containing ONE triple and the LIST of lexicalizations to the datapoints list
 
     return datapoints, cats, cont
@@ -138,7 +147,7 @@ def get_data_dev_test(file_, train_cat, dataset):
 def get_data(file_):
     datapoints = []
     cats = set()
-    #cats_list = []
+    # cats_list = []
 
     xmldoc = minidom.parse(file_)
     entries = xmldoc.getElementsByTagName('entry')
@@ -146,7 +155,7 @@ def get_data(file_):
     for e in entries:
         cat = e.getAttribute('category')
         cats.add(cat)
-        #cats_list.append(cat)
+        # cats_list.append(cat)
 
         cont += 1
 
@@ -162,9 +171,9 @@ def get_data(file_):
             new_doc = ' '.join(new_doc.split())
             # new_doc = tokenizer.tokenize(new_doc)
             # new_doc = ' '.join(new_doc)
-            datapoints.append([nodes, (l, new_doc.lower()), sub_list, edge_list, [0,0], cat])
+            datapoints.append([nodes, (l, new_doc.lower()), sub_list, edge_list, [00, 00], cat])
             # Append a tuple containing ONE triple and ONE lexicalization to the datapoints list
-            #edge_compare.append(edges)
+            # edge_compare.append(edges)
 
     return datapoints, cats, cont
 
@@ -172,24 +181,27 @@ def get_data(file_):
 def find_analogies(datapoints, split):
     ana_count = 0
     for x in tqdm(range(len(datapoints)), desc='Finding Analogies'):
-        #inner_ana_count = 0
+        # inner_ana_count = 0
         for y in range(len(datapoints)):
             x_subject_set = set(datapoints[x][2])
             y_subject_set = set(datapoints[y][2])
             inter_sub = x_subject_set & y_subject_set
-            unique_subjects = (len(x_subject_set) + len(y_subject_set)) - len(inter_sub) # Number of unique items in the two subject lists combined
-            sub_sim_score = (len(inter_sub)) / unique_subjects # Similarity score via percentage of overlap over unique subjects
+            unique_subjects = (len(x_subject_set) + len(y_subject_set)) - len(
+                inter_sub)  # Number of unique items in the two subject lists combined
+            sub_sim_score = (len(
+                inter_sub)) / unique_subjects  # Similarity score via percentage of overlap over unique subjects
             if sorted(x_subject_set) != sorted(y_subject_set) and sub_sim_score < 0.3:
-            # If the subjects are not identical and their subject similarity score is below threshold
+                # If the subjects are not identical and their subject similarity score is below threshold
                 x_predicate_set = set(datapoints[x][3])
                 y_predicate_set = set(datapoints[y][3])
                 inter_pred = x_predicate_set & y_predicate_set
                 unique_predicates = (len(x_predicate_set) + len(y_predicate_set)) - len(inter_pred)
-                pred_sim_score = len(inter_pred) / unique_predicates # Similarity score via percentage of overlap over unique predicates
-                if pred_sim_score > 0.6: # If the predicate similarity score is above threshold
+                pred_sim_score = len(
+                    inter_pred) / unique_predicates  # Similarity score via percentage of overlap over unique predicates
+                if pred_sim_score > 0.6:  # If the predicate similarity score is above threshold
                     datapoints, ana_count = add_analogies(datapoints, x, y, ana_count, split=split)
-                    #inner_ana_count += 1
-                    #ana_count += 1
+                    # inner_ana_count += 1
+                    # ana_count += 1
                     datapoints[x][4][0] = sub_sim_score
                     datapoints[x][4][1] = pred_sim_score
                     # Idea if we wanted to look for more than 1 analogy
@@ -199,7 +211,6 @@ def find_analogies(datapoints, split):
                     # but nothing major, probably just adding another 'for loop'
                     break
 
-
     if split == 'train' or split == 'dev':
         print(f'{ana_count}/{len(datapoints)} total analogies')
     else:
@@ -208,7 +219,8 @@ def find_analogies(datapoints, split):
             if len(datapoint) > 6:
                 datapoints_len.append(len(datapoint[6]))
             else:
-                datapoints_len.append(1) # Just add a 1 to the list since there will only be 1 input if there are no analogies found (since we only take one lexicalization
+                datapoints_len.append(
+                    1)  # Just add a 1 to the list since there will only be 1 input if there are no analogies found (since we only take one lexicalization
         print(f'{ana_count}/{sum(datapoints_len)} total analogies')
     return datapoints
 
@@ -217,22 +229,22 @@ def add_analogies(datapoints, x, y, ana_count, split):
     orig_triple = datapoints[x][0].copy()
     triple_addition = datapoints[y][0].copy()
     if split != 'train':
-        if split == 'dev': # Basically if we are dealing with the 'dev/val' split
+        if split == 'dev':  # Basically if we are dealing with the 'dev/val' split
             # We have the extra level of indexing here because in the non-train splits there is a possibility to have multiple lexicalizations
             # For our dev/val set we just choose the first one in the list
             lex_addition = datapoints[y][1][0][0].split()
-        else: # If the split is 'test'
+        else:  # If the split is 'test'
             lex_additions = [lex[0].split() for lex in list(set(datapoints[y][1]))]
-    else: # If we ARE dealing with the 'train' split
+    else:  # If we ARE dealing with the 'train' split
         lex_addition = datapoints[y][1][0].split()
 
-    if split == 'train' or split == 'dev': # If we are not dealing with one of the three 'test' splits we will only add one lexicalization
+    if split == 'train' or split == 'dev':  # If we are not dealing with one of the three 'test' splits we will only add one lexicalization
         lex_addition.append('<<G>>')  # Add graph separator to separate analogy graphs from main graph
         triple_addition.append('<L>')  # Add lexicalization separator
         combined_addition = triple_addition + lex_addition + orig_triple
         datapoints[x].append(combined_addition)
         ana_count += 1
-    else: # If we ARE in fact dealing with one of the 'test' splits we will add a new input for each lexicalization
+    else:  # If we ARE in fact dealing with one of the 'test' splits we will add a new input for each lexicalization
         new_additions = []
         triple_addition.append('<L>')  # Add lexicalization separator
         for lex_addition in lex_additions:
@@ -242,6 +254,7 @@ def add_analogies(datapoints, x, y, ana_count, split):
 
         datapoints[x].append(new_additions)
     return datapoints, ana_count
+
 
 # Work on getting this function to work, it'd be a lot more elegant below
 '''
@@ -292,13 +305,13 @@ def organize_final_data(nodes, node, sur, surface_lists, surface_eval_lists, cou
 
 train_cat = set()
 dataset_points = []
-for d in tqdm(datasets, desc='Datasets'): # Datasets list: ['dev', 'test_both', 'test_seen', 'test_unseen']
-    total_pred_dict = {} # Dictionary where the keys are predicates and the values are a dictionary with the keys are 'triple' and 'lex' containing triples and lexicalizations for that predicate
+for d in tqdm(datasets, desc='Datasets'):  # Datasets list: ['dev', 'test_both', 'test_seen', 'test_unseen']
+    total_pred_dict = {}  # Dictionary where the keys are predicates and the values are a dictionary with the keys are 'triple' and 'lex' containing triples and lexicalizations for that predicate
     print(f'Dataset split: {d}')
     cont_all = 0
     datapoints = []
     all_cats = set()
-    #all_cats_list = []
+    # all_cats_list = []
     if 'test' in d:
         d_set = 'test'
         files = [folder + '/' + d_set + '/rdf-to-text-generation-test-data-with-refs-en.xml']
@@ -312,10 +325,10 @@ for d in tqdm(datasets, desc='Datasets'): # Datasets list: ['dev', 'test_both', 
 
         if d == 'train':
             datapoint, cats, cont = get_data(filename)
-            #total_pred_dict = dict_merge(total_pred_dict, pred_dict)
+            # total_pred_dict = dict_merge(total_pred_dict, pred_dict)
         else:
             datapoint, cats, cont = get_data_dev_test(filename, train_cat, d)
-            #total_pred_dict = dict_merge(total_pred_dict, pred_dict)
+            # total_pred_dict = dict_merge(total_pred_dict, pred_dict)
 
         cont_all += cont
 
@@ -335,7 +348,8 @@ for d in tqdm(datasets, desc='Datasets'): # Datasets list: ['dev', 'test_both', 
           but will NOT be the number of UNIQUE triples (since each triple may have multiple lexicalizations)
         '''
     else:
-        print(f'Number of {d} texts/lexicalizations: {sum([len(datapoints[num][1]) for num, val in enumerate(datapoints)])}')
+        print(
+            f'Number of {d} texts/lexicalizations: {sum([len(datapoints[num][1]) for num, val in enumerate(datapoints)])}')
         datapoints = find_analogies(datapoints, split=d)
         '''
         Datapoints list organization for all other dataset splits: List of tuples in which each tuple contains two items:
@@ -353,8 +367,21 @@ for d in tqdm(datasets, desc='Datasets'): # Datasets list: ['dev', 'test_both', 
 
     dataset_points.append(datapoints)
 
+
+# This section is to update test_both so it is the combination of test_seen and test_unseen (and thus contains the identical analogies)
+dataset_points[2] = dataset_points[3] + dataset_points[4] # Replacing the test_both data with the test_seen + test_unseen data + their corresponding analogies
+ana_count = sum([len(datapoint[6]) for datapoint in dataset_points[2] if len(datapoint) > 6])
+datapoints_len = []
+for datapoint in dataset_points[2]:
+    if len(datapoint) > 6:
+        datapoints_len.append(len(datapoint[6]))
+    else:
+        datapoints_len.append(1)  # Just add a 1 to the list since there will only be 1 input if there are no analogies found (since we only take one lexicalization
+print(f'{ana_count}/{sum(datapoints_len)} total REVISED TEST BOTH analogies')
+
+
 path = os.path.dirname(
-    os.path.realpath(__file__)) + '/webnlg_prep_TEST/'  # Change file name back when experimenting is over
+    os.path.realpath(__file__)) + '/webnlg_prep_ANA_OG/'  # Change file name back when experimenting is over
 if not os.path.exists(path):
     os.makedirs(path)
 
@@ -382,10 +409,10 @@ for idx, datapoints in enumerate(dataset_points):
     surfaces_5_eval = []
 
     # This doesn't work, cannot zip empty lists; work in progress
-    surface_lists = list(zip(surfaces, surfaces_2, surfaces_3, surfaces_4, surfaces_5))
-    surface_eval_lists = list(zip(surfaces_eval, surfaces_2_eval, surfaces_3_eval, surfaces_4_eval, surfaces_5_eval))
+    #surface_lists = list(zip(surfaces, surfaces_2, surfaces_3, surfaces_4, surfaces_5))
+    #surface_eval_lists = list(zip(surfaces_eval, surfaces_2_eval, surfaces_3_eval, surfaces_4_eval, surfaces_5_eval))
 
-    overlap_scores = [datapoint[4] for datapoint in datapoints]
+    overlap_scores = []
 
     total_data_count = 0
     cats_list = []
@@ -400,7 +427,7 @@ for idx, datapoints in enumerate(dataset_points):
 
         #*My explanation of the datapoints lists in lines 189 and 199 can help you understand the indexing using below
          #to organize these files
-         
+
          Datapoint list indexing:
          - 0: list of list of triples
          - 1: tuple of lexicalizations
@@ -411,16 +438,17 @@ for idx, datapoints in enumerate(dataset_points):
         - 4: list containing the sub_sim_score and pred_sim_score for each analogy [Scores are set to 0 if no analogy is found]
         - 5: category of each input triple
         - 6: new input with analogy triple/graph & lexicalizations along with the original triple (g1 <L> s1 <<G>> g2) [ONLY IF AN ANALOGY IS FOUND]
-        
+
         '''
 
         sur = datapoint[1]
-        if len(datapoint) > 6: # We only want to include data for which analogies were found
+        if len(datapoint) > 6:  # We only want to include data for which analogies were found
             node = datapoint[6]
-            if type(node[0]) == list: # Checking if there are multiple inputs for a certain graph
+            if type(node[0]) == list:  # Checking if there are multiple inputs for a certain graph
                 for single_node in node:
                     total_data_count += 1
                     nodes.append(' '.join(single_node))
+                    overlap_scores.append(datapoint[4])
                     cats_list.append(datapoint[5])
                     if part != 'train':
                         surfaces.append(sur[0][0])
@@ -437,7 +465,7 @@ for idx, datapoints in enumerate(dataset_points):
                         else:
                             surfaces_3.append('')
                             surfaces_3_eval.append('')
-                        if 'test' in part:  # only continue on to these steps for test set
+                        if 'test' in part and OG is False:  # only continue on to these steps for test set
                             if len(sur) > 3:
                                 surfaces_4.append(sur[3][0])
                                 surfaces_4_eval.append(sur[3][1])
@@ -458,6 +486,7 @@ for idx, datapoints in enumerate(dataset_points):
             else:
                 total_data_count += 1
                 nodes.append(' '.join(node))
+                overlap_scores.append(datapoint[4])
                 cats_list.append(datapoint[5])
                 if part != 'train':
                     surfaces.append(sur[0][0])
@@ -474,15 +503,14 @@ for idx, datapoints in enumerate(dataset_points):
                     else:
                         surfaces_3.append('')
                         surfaces_3_eval.append('')
-                    if 'test' in part:  # only continue on to these steps for test set
+                    if 'test' in part and OG is False:  # only continue on to these steps for test set
                         if len(sur) > 3:
                             surfaces_4.append(sur[3][0])
                             surfaces_4_eval.append(sur[3][1])
                         else:
                             surfaces_4.append('')
                             surfaces_4_eval.append('')
-                        if len(
-                                sur) > 4 and part != 'test_seen':  # exclude test_seen because none of the triples in the seen split have more than 4 lexicalizations so this list would be empty
+                        if len(sur) > 4 and part != 'test_seen':  # exclude test_seen because none of the triples in the seen split have more than 4 lexicalizations so this list would be empty
                             surfaces_5.append(sur[4][0])
                             surfaces_5_eval.append(sur[4][1])
                         else:
@@ -492,8 +520,66 @@ for idx, datapoints in enumerate(dataset_points):
                     surfaces.append(sur[0])
                     surfaces_eval.append(sur[1])
 
-    print(f'{total_data_count} datapoints')
-    print(f'Cats check: {len(cats_list)}') # Verifying that the length of the categories list is the same as the number of datapoints
+    if 'test' in part and OG is False:
+        target1_name = '.target1'
+    else:
+        target1_name = '.target'
+    with open(path + '/' + part + target1_name, 'w', encoding='utf8') as f:
+        f.write('\n'.join(surfaces))
+        f.write('\n')
+    if part != 'train':
+        with open(path + '/' + part + '.target2', 'w', encoding='utf8') as f:
+            f.write('\n'.join(surfaces_2))
+            f.write('\n')
+        with open(path + '/' + part + '.target3', 'w', encoding='utf8') as f:
+            f.write('\n'.join(surfaces_3))
+            f.write('\n')
+    if 'test' in part and OG is False:  # only do for test set
+        with open(path + '/' + part + '.target4', 'w', encoding='utf8') as f:
+            f.write('\n'.join(surfaces_4))
+            f.write('\n')
+        if part != 'test_seen':  # exclude test_seen because none of the triples in this split have more than 4 lexicalizations so this file would be empty
+            with open(path + '/' + part + '.target5', 'w', encoding='utf8') as f:
+                f.write('\n'.join(surfaces_5))
+                f.write('\n')
+    if 'test' in part and OG is False:
+        target1_eval_name = '.target1_eval'
+    else:
+        target1_eval_name = '.target_eval'
+    with open(path + '/' + part + target1_eval_name, 'w', encoding='utf8') as f:
+        f.write('\n'.join(surfaces_eval))
+        f.write('\n')
+    if part != 'train':
+        with open(path + '/' + part + '.target2_eval', 'w', encoding='utf8') as f:
+            f.write('\n'.join(surfaces_2_eval))
+            f.write('\n')
+        with open(path + '/' + part + '.target3_eval', 'w', encoding='utf8') as f:
+            f.write('\n'.join(surfaces_3_eval))
+            f.write('\n')
+        if OG:
+            path_c = os.path.dirname(os.path.realpath(__file__))
+            os.system("python " + path_c + '/' + "convert_files_crf.py " + path + '/' + part)
+            os.system("python " + path_c + '/' + "convert_files_meteor.py " + path + '/' + part)
+
+    if 'test' in part and OG is False:  # only do for test set
+        with open(path + '/' + part + '.target4_eval', 'w', encoding='utf8') as f:
+            f.write('\n'.join(surfaces_4_eval))
+            f.write('\n')
+        if part != 'test_seen':  # exclude test_seen because none of the triples in this split have more than 4 lexicalizations so this file would be empty
+            with open(path + '/' + part + '.target5_eval', 'w', encoding='utf8') as f:
+                f.write('\n'.join(surfaces_5_eval))
+                f.write('\n')
+
+
+    labels = ['Subject overlap', 'Predicate overlap']
+    with open(path + '/' + part + '.overlap_scores.csv', 'w', encoding='utf8') as f:
+        write = csv.writer(f)
+        write.writerow(labels)
+        for score in overlap_scores:
+            write.writerow(score)
+
+    print(f'{part} datapoints: {total_data_count}')
+    print(f'{part} cats check: {len(cats_list)}')  # Verifying that the length of the categories list is the same as the number of datapoints
 
     # Creating numpy arrays for the sources and categories
     if part != 'test_unseen':
@@ -508,70 +594,11 @@ for idx, datapoints in enumerate(dataset_points):
         f.write('\n'.join(nodes))
         f.write('\n')
 
-
     np_source_path = path + '/' + part + '.source.npy'
     np.save(np_source_path, source_array)
 
     np_cats_path = path + '/' + part + '.source_cat.npy'
     np.save(np_cats_path, cats_map)
-
-    if 'test' in part:
-        target1_name = '.target1'
-    else:
-        target1_name = '.target'
-    with open(path + '/' + part + target1_name, 'w', encoding='utf8') as f:
-        f.write('\n'.join(surfaces))
-        f.write('\n')
-    if part != 'train':
-        with open(path + '/' + part + '.target2', 'w', encoding='utf8') as f:
-            f.write('\n'.join(surfaces_2))
-            f.write('\n')
-        with open(path + '/' + part + '.target3', 'w', encoding='utf8') as f:
-            f.write('\n'.join(surfaces_3))
-            f.write('\n')
-    if 'test' in part:  # only do for test set
-        with open(path + '/' + part + '.target4', 'w', encoding='utf8') as f:
-            f.write('\n'.join(surfaces_4))
-            f.write('\n')
-        if part != 'test_seen':  # exclude test_seen because none of the triples in this split have more than 4 lexicalizations so this file would be empty
-            with open(path + '/' + part + '.target5', 'w', encoding='utf8') as f:
-                f.write('\n'.join(surfaces_5))
-                f.write('\n')
-    if 'test' in part:
-        target1_eval_name = '.target1_eval'
-    else:
-        target1_eval_name = '.target_eval'
-    with open(path + '/' + part + target1_eval_name, 'w', encoding='utf8') as f:
-        f.write('\n'.join(surfaces_eval))
-        f.write('\n')
-    if part != 'train':
-        with open(path + '/' + part + '.target2_eval', 'w', encoding='utf8') as f:
-            f.write('\n'.join(surfaces_2_eval))
-            f.write('\n')
-        with open(path + '/' + part + '.target3_eval', 'w', encoding='utf8') as f:
-            f.write('\n'.join(surfaces_3_eval))
-            f.write('\n')
-        if part == 'val':
-            path_c = os.path.dirname(os.path.realpath(__file__))
-            os.system("python " + path_c + '/' + "convert_files_crf.py " + path + part)
-            os.system("python " + path_c + '/' + "convert_files_meteor.py " + path + part)
-    if 'test' in part:  # only do for test set
-        with open(path + '/' + part + '.target4_eval', 'w', encoding='utf8') as f:
-            f.write('\n'.join(surfaces_4_eval))
-            f.write('\n')
-        if part != 'test_seen':  # exclude test_seen because none of the triples in this split have more than 4 lexicalizations so this file would be empty
-            with open(path + '/' + part + '.target5_eval', 'w', encoding='utf8') as f:
-                f.write('\n'.join(surfaces_5_eval))
-                f.write('\n')
-
-    labels = ['Subject overlap', 'Predicate overlap']
-    with open(path + '/' + part + '.overlap_scores.csv', 'w', encoding='utf8') as f:
-        write = csv.writer(f)
-        write.writerow(labels)
-        for score in overlap_scores:
-            write.writerow(score)
-
-
 
 print('Preprocessing Finished')
 print(f'Data located in {path}')
